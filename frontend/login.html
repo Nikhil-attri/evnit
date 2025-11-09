@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>eVNIT - Login</title>
+  <link rel="stylesheet" href="login.css" />
+</head>
+<body>
+  <div class="login-container">
+    <div class="logo">
+      <div class="logo-icon">eV</div>
+      <h1 class="title">eVNIT</h1>
+      <p class="subtitle">Smart Campus Transportation</p>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="student">
+        <span class="tab-icon">📱</span> Student
+      </button>
+      <button class="tab" data-tab="driver">
+        <span class="tab-icon">🚗</span> Driver
+      </button>
+      <button class="tab" data-tab="admin">
+        <span class="tab-icon">🔐</span> Admin
+      </button>
+    </div>
+
+    <!-- ========== STUDENT LOGIN ========== -->
+    <div class="tab-content active" id="student">
+      <form id="studentForm" autocomplete="on">
+        <div class="form-group">
+          <label for="studentEmail">VNIT Email / Roll Number</label>
+          <input 
+            type="text" 
+            id="studentEmail" 
+            name="email"
+            placeholder="BT1234567 or email@vnit.ac.in" 
+            autocomplete="email"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="studentPassword">Password</label>
+          <input 
+            type="password" 
+            id="studentPassword" 
+            name="password"
+            placeholder="Enter your password"
+            autocomplete="current-password"
+          />
+        </div>
+
+        <p id="studentError" class="error"></p>
+
+        <div class="form-options">
+          <label class="checkbox-label">
+            <input type="checkbox" id="rememberStudent" />
+            <span>Remember Me</span>
+          </label>
+          <a href="#" class="link" id="forgotPasswordStudent">Forgot Password?</a>
+        </div>
+
+        <button type="submit" class="login-btn">Login</button>
+
+        <div class="divider">OR</div>
+
+        <button type="button" class="guest-btn" id="guestBtn">Continue as Guest</button>
+
+        <p class="signup-link">
+          First time here? <a href="#" id="registerStudent" class="link">Register Here</a>
+        </p>
+      </form>
+    </div>
+
+    <!-- ========== DRIVER LOGIN ========== -->
+    <div class="tab-content" id="driver">
+      <form id="driverForm" autocomplete="on">
+        <div class="form-group">
+          <label for="driverId">Driver ID</label>
+          <input 
+            type="text" 
+            id="driverId" 
+            name="driverId"
+            placeholder="e.g., EV-023" 
+            autocomplete="username"
+          />
+          <small class="helper-text">Issued by Transport Cell</small>
+        </div>
+
+        <div class="form-group">
+          <label for="driverPassword">Password</label>
+          <input 
+            type="password" 
+            id="driverPassword" 
+            name="password"
+            placeholder="Enter your password"
+            autocomplete="current-password"
+          />
+        </div>
+
+        <p id="driverError" class="error"></p>
+
+        <div class="form-options">
+          <label class="checkbox-label">
+            <input type="checkbox" id="rememberDriver" />
+            <span>Remember Me</span>
+          </label>
+          <a href="#" class="link" id="forgotPasswordDriver">Forgot Password?</a>
+        </div>
+
+        <button type="submit" class="login-btn">Login as Driver</button>
+
+        <div class="info-box">
+          <span class="info-icon">ℹ️</span>
+          <p>New drivers must contact Transport Cell for credentials</p>
+        </div>
+      </form>
+    </div>
+
+    <!-- ========== ADMIN LOGIN ========== -->
+    <div class="tab-content" id="admin">
+      <form id="adminForm" autocomplete="on">
+        <div class="alert-box">
+          <span class="alert-icon">⚠️</span>
+          <p>Restricted Access - Authorized Personnel Only</p>
+        </div>
+
+        <div class="form-group">
+          <label for="adminUsername">Admin Username</label>
+          <input 
+            type="text" 
+            id="adminUsername" 
+            name="username"
+            placeholder="Enter admin username"
+            autocomplete="username"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="adminPassword">Password</label>
+          <input 
+            type="password" 
+            id="adminPassword" 
+            name="password"
+            placeholder="Enter your password"
+            autocomplete="current-password"
+          />
+        </div>
+
+        <!-- OTP Field (Hidden by default) -->
+        <div class="form-group" id="otpGroup" style="display: none;">
+          <label for="adminOTP">One-Time Password (OTP)</label>
+          <input 
+            type="text" 
+            id="adminOTP" 
+            placeholder="Enter 6-digit OTP"
+            maxlength="6"
+            autocomplete="one-time-code"
+          />
+          <small class="helper-text">Check your registered email/phone</small>
+        </div>
+
+        <p id="adminError" class="error"></p>
+
+        <div class="form-options">
+          <label class="checkbox-label">
+            <input type="checkbox" id="rememberAdmin" />
+            <span>Remember Me</span>
+          </label>
+          <a href="#" class="link" id="forgotPasswordAdmin">Forgot Password?</a>
+        </div>
+
+        <button type="submit" class="login-btn" id="adminLoginBtn">Login as Admin</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========== MODALS ========== -->
+  
+  <!-- Forgot Password Modal -->
+  <div id="forgotPasswordModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Reset Password</h2>
+      <p>Enter your email address to receive a password reset link.</p>
+      
+      <div class="form-group">
+        <label for="resetEmail">Email Address</label>
+        <input 
+          type="email" 
+          id="resetEmail" 
+          placeholder="Enter your email"
+        />
+      </div>
+      
+      <p id="resetError" class="error"></p>
+      
+      <button class="login-btn" id="sendResetLink">Send Reset Link</button>
+    </div>
+  </div>
+
+  <!-- Registration Modal -->
+  <div id="registrationModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2>Student Registration</h2>
+      
+      <div class="form-group">
+        <label for="regName">Full Name</label>
+        <input type="text" id="regName" placeholder="Enter your full name" />
+      </div>
+
+      <div class="form-group">
+        <label for="regEmail">VNIT Email</label>
+        <input type="text" id="regEmail" placeholder="BT23CSE67@vnit.ac.in" />
+      </div>
+
+      <div class="form-group">
+        <label for="regPassword">Password</label>
+        <input type="password" id="regPassword" placeholder="Create a password" />
+      </div>
+
+      <div class="form-group">
+        <label for="regPhone">Phone Number</label>
+        <input type="tel" id="regPhone" placeholder="10-digit mobile number" />
+      </div>
+
+      <div class="form-group">
+        <label for="regDepartment">Department</label>
+        <select id="regDepartment">
+          <option value="">Select Department</option>
+          <option value="CSE">Computer Science & Engineering</option>
+          <option value="ECE">Electronics & Communication</option>
+          <option value="EE">Electrical Engineering</option>
+          <option value="ME">Mechanical Engineering</option>
+          <option value="CE">Civil Engineering</option>
+          <option value="MME">Metallurgical & Materials</option>
+          <option value="CHE">Chemical Engineering</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+
+      <label class="checkbox-label">
+        <input type="checkbox" id="agreeTerms" />
+        <span>I agree to the <a href="#" class="link">Terms & Conditions</a></span>
+      </label>
+      
+      <p id="regError" class="error"></p>
+      
+      <button class="login-btn" id="registerBtn">Register</button>
+    </div>
+  </div>
+
+  <script src="login.js"></script>
+</body>
+</html>

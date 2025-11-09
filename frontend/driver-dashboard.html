@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Dashboard - VNIT E-Vehicle</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 24px;
+        }
+
+        .driver-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .status-available {
+            background: #10b981;
+            color: white;
+        }
+
+        .status-busy {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .logout-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stats-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .stats-card h3 {
+            color: #64748b;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .stats-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .main-panel {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .section-title {
+            font-size: 20px;
+            color: #1e293b;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .ride-card {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+
+        .ride-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .ride-id {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .ride-status {
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-assigned {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-started {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .location-info {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .location-label {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 5px;
+        }
+
+        .location-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+
+        .student-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .student-avatar {
+            width: 40px;
+            height: 40px;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #64748b;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .vehicle-info-panel {
+            background: #f0f9ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .vehicle-info-panel h4 {
+            color: #1e293b;
+            margin-bottom: 10px;
+        }
+
+        .vehicle-detail {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            color: #475569;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🚗 Driver Dashboard</h1>
+            <div class="driver-info">
+                <div id="driverName" style="font-weight: 600;"></div>
+                <span id="statusBadge" class="status-badge status-available">Available</span>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="dashboard-grid">
+            <div class="stats-card">
+                <h3>TODAY'S RIDES</h3>
+                <div class="stats-value" id="todayRides">0</div>
+            </div>
+            <div class="stats-card">
+                <h3>TODAY'S EARNINGS</h3>
+                <div class="stats-value">₹<span id="todayEarnings">0</span></div>
+            </div>
+            <div class="stats-card">
+                <h3>TOTAL RIDES</h3>
+                <div class="stats-value" id="totalRides">0</div>
+            </div>
+        </div>
+
+        <!-- Vehicle Info -->
+        <div class="vehicle-info-panel" id="vehicleInfo">
+            <h4>Your Vehicle</h4>
+            <div class="vehicle-detail">
+                <span>Vehicle Number:</span>
+                <strong id="vehicleNumber">-</strong>
+            </div>
+            <div class="vehicle-detail">
+                <span>Capacity:</span>
+                <strong><span id="currentCapacity">0</span>/<span id="maxCapacity">0</span> passengers</strong>
+            </div>
+            <div class="vehicle-detail">
+                <span>Battery:</span>
+                <strong id="batteryLevel">-</strong>
+            </div>
+        </div>
+
+        <!-- Active Rides -->
+        <div class="main-panel">
+            <h2 class="section-title">Active Rides</h2>
+            <div id="activeRidesContainer">
+                <div class="empty-state">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                    </svg>
+                    <p>No active rides at the moment</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'backend/api';
+        let driverData = null;
+        let activeRides = [];
+
+        // Check authentication
+        window.onload = function() {
+            const driver = localStorage.getItem('driver');
+            if (!driver) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            driverData = JSON.parse(driver);
+            document.getElementById('driverName').textContent = driverData.name;
+            
+            loadDriverStats();
+            loadVehicleInfo();
+            loadActiveRides();
+            
+            // Auto-refresh every 10 seconds
+            setInterval(loadActiveRides, 10000);
+        };
+
+        async function loadDriverStats() {
+            try {
+                const response = await fetch(`${API_BASE}/drivers/get_stats.php?driver_id=${driverData.driver_id}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('todayRides').textContent = data.today_rides || 0;
+                    document.getElementById('todayEarnings').textContent = data.today_earnings || 0;
+                    document.getElementById('totalRides').textContent = data.total_rides || 0;
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        async function loadVehicleInfo() {
+            try {
+                const response = await fetch(`${API_BASE}/vehicles/get_vehicle_info.php?driver_id=${driverData.driver_id}`);
+                const data = await response.json();
+                
+                if (data.success && data.vehicle) {
+                    const v = data.vehicle;
+                    document.getElementById('vehicleNumber').textContent = v.vehicle_number;
+                    document.getElementById('currentCapacity').textContent = v.current_capacity;
+                    document.getElementById('maxCapacity').textContent = v.capacity;
+                    document.getElementById('batteryLevel').textContent = v.battery_level + '%';
+                }
+            } catch (error) {
+                console.error('Error loading vehicle info:', error);
+            }
+        }
+
+        async function loadActiveRides() {
+            try {
+                const response = await fetch(`${API_BASE}/rides/get_active_rides.php?driver_id=${driverData.driver_id}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    activeRides = data.rides || [];
+                    renderActiveRides();
+                    updateStatusBadge();
+                }
+            } catch (error) {
+                console.error('Error loading rides:', error);
+            }
+        }
+
+        function renderActiveRides() {
+            const container = document.getElementById('activeRidesContainer');
+            
+            if (activeRides.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                        <p>No active rides at the moment</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = activeRides.map(ride => {
+                const nextLocation = ride.status === 'assigned' ? ride.pickup_location : ride.drop_location;
+                const nextLocationName = ride.status === 'assigned' ? ride.pickup_name : ride.drop_name;
+                
+                return `
+                    <div class="ride-card">
+                        <div class="ride-header">
+                            <span class="ride-id">Ride #${ride.ride_id}</span>
+                            <span class="ride-status status-${ride.status}">${ride.status.toUpperCase()}</span>
+                        </div>
+                        
+                        <div class="student-info">
+                            <div class="student-avatar">${ride.student_name.charAt(0)}</div>
+                            <div>
+                                <div style="font-weight: 600;">${ride.student_name}</div>
+                                <div style="font-size: 12px; color: #64748b;">${ride.student_email}</div>
+                            </div>
+                        </div>
+
+                        <div class="location-info">
+                            <div class="location-label">NEXT DESTINATION</div>
+                            <div class="location-name">📍 ${nextLocationName}</div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; font-size: 14px;">
+                            <div>
+                                <div style="color: #64748b;">Fare</div>
+                                <div style="font-weight: 600;">₹${ride.fare}</div>
+                            </div>
+                            <div>
+                                <div style="color: #64748b;">Payment</div>
+                                <div style="font-weight: 600;">${ride.payment_method}</div>
+                            </div>
+                        </div>
+
+                        <div class="action-buttons">
+                            ${ride.status === 'assigned' ? `
+                                <button class="btn btn-primary" onclick="startRide(${ride.ride_id})">
+                                    🚀 Start Ride
+                                </button>
+                            ` : `
+                                <button class="btn btn-success" onclick="completeRide(${ride.ride_id}, '${ride.payment_method}')">
+                                    ✓ Complete Ride
+                                </button>
+                            `}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateStatusBadge() {
+            const badge = document.getElementById('statusBadge');
+            if (activeRides.length > 0) {
+                badge.className = 'status-badge status-busy';
+                badge.textContent = 'Busy';
+            } else {
+                badge.className = 'status-badge status-available';
+                badge.textContent = 'Available';
+            }
+        }
+
+        async function startRide(rideId) {
+            if (!confirm('Have you reached the pickup location?')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/rides/update_ride_status.php`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ride_id: rideId,
+                        status: 'started',
+                        driver_id: driverData.driver_id
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('Ride started! Navigate to drop location.');
+                    loadActiveRides();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('Error starting ride');
+            }
+        }
+
+        async function completeRide(rideId, paymentMethod) {
+            let proceed = false;
+            
+            if (paymentMethod === 'id_card') {
+                const barcode = prompt('Scan student ID card barcode:');
+                if (!barcode) return;
+                proceed = true;
+            } else {
+                proceed = confirm('Confirm ride completion? Payment will be deducted from wallet.');
+            }
+
+            if (!proceed) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/rides/complete_ride.php`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ride_id: rideId,
+                        driver_id: driverData.driver_id
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert('Ride completed successfully! ₹' + data.fare + ' earned.');
+                    loadActiveRides();
+                    loadDriverStats();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            } catch (error) {
+                alert('Error completing ride');
+            }
+        }
+
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                localStorage.removeItem('driver');
+                window.location.href = 'login.html';
+            }
+        }
+    </script>
+</body>
+</html>

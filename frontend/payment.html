@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ID Card Payment - eVNIT</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .scanner-container {
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      text-align: center;
+      max-width: 400px;
+    }
+    h1 { color: #667eea; margin-bottom: 10px; }
+    .scan-icon { font-size: 80px; margin: 20px 0; }
+    input {
+      width: 100%;
+      padding: 15px;
+      font-size: 18px;
+      border: 2px solid #667eea;
+      border-radius: 10px;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 15px 40px;
+      border: none;
+      border-radius: 10px;
+      font-size: 18px;
+      cursor: pointer;
+      width: 100%;
+    }
+    .btn:hover { opacity: 0.9; }
+    .result { margin-top: 20px; font-size: 18px; font-weight: bold; }
+    .success { color: #22c55e; }
+    .error { color: #ef4444; }
+  </style>
+</head>
+<body>
+  <div class="scanner-container">
+    <h1>eVNIT Payment</h1>
+    <div class="scan-icon">📇</div>
+    <p>Scan or enter ID card barcode</p>
+    <input type="text" id="barcode-input" placeholder="BC21CSE045" autofocus />
+    <p style="color: #667eea; font-size: 24px; font-weight: bold;">Fare: ₹10</p>
+    <button class="btn" onclick="processPayment()">Process Payment</button>
+    <div class="result" id="result"></div>
+  </div>
+
+  <script>
+    // Auto-submit on barcode scan (simulates scanner)
+    document.getElementById('barcode-input').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        processPayment();
+      }
+    });
+
+    async function processPayment() {
+      const barcode = document.getElementById('barcode-input').value.trim();
+      const result = document.getElementById('result');
+      
+      if (!barcode) {
+        result.className = 'result error';
+        result.textContent = '❌ Please scan ID card';
+        return;
+      }
+      
+      result.className = 'result';
+      result.textContent = '⏳ Processing...';
+      
+      try {
+        const formData = new FormData();
+        formData.append('ride_id', localStorage.getItem('current_ride_id')); // Set by driver app
+        formData.append('payment_method', 'id_card');
+        formData.append('barcode_scanned', barcode);
+        
+        const response = await fetch('../backend/api/rides/complete_ride.php', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+          result.className = 'result success';
+          result.textContent = '✅ Payment Successful!';
+          setTimeout(() => {
+            document.getElementById('barcode-input').value = '';
+            result.textContent = '';
+          }, 3000);
+        } else {
+          result.className = 'result error';
+          result.textContent = '❌ ' + data.message;
+        }
+      } catch (error) {
+        result.className = 'result error';
+        result.textContent = '❌ Payment failed';
+      }
+    }
+  </script>
+</body>
+</html>
