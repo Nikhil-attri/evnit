@@ -245,6 +245,29 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system;
   </div>
 </div>
 
+<!-- SOS Modal -->
+<div class="modal" id="sos-modal">
+  <div class="modal-content" style="max-width:400px;">
+    <button class="close-btn" onclick="closeModal('sos-modal')">×</button>
+    <h2 style="color:#dc2626;">🚨 Emergency Alert</h2>
+    <div style="background:#7f1d1d;padding:12px;border-radius:8px;margin:16px 0;color:white;">
+      This will alert VNIT Security and nearby drivers with your current location.
+    </div>
+    <div class="input-row" style="margin:16px 0;">
+      <span>📝</span>
+      <input type="text" id="sos-message" placeholder="Describe emergency (optional)" maxlength="100">
+    </div>
+    <div style="display:grid;gap:12px;">
+      <button onclick="sendSOSAlert()" style="background:#dc2626;color:white;border:none;padding:16px;border-radius:12px;font-size:1.1rem;font-weight:600;cursor:pointer;">
+        🚨 Send SOS Alert
+      </button>
+      <button class="btn" onclick="closeModal('sos-modal')">
+        Cancel
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
