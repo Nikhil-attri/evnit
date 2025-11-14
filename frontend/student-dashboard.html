@@ -194,10 +194,339 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system;
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+<!-- PWA Manifest -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#22c55e">
+
+<!-- Service Worker Registration -->
 <script>
-let campusLocations=[],currentEstimate=null;
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then(registration => {
+      console.log('SW registered: ', registration);
+    }).catch(registrationError => {
+      console.log('SW registration failed: ', registrationError);
+    });
+  });
+}
+</script>
+
+<script>
+let campusLocations=[], currentEstimate=null;
 const API_BASE='../backend/api';
 let campusMap=null, campusMarkers=[], driverMarkers={};
+let websocket=null, currentUser=null;
+let activeRide=null, rideTrackingInterval=null;
+let isOnline = navigator.onLine;
+
+// WebSocket connection
+function connectWebSocket() {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.hostname}:8080`;
+
+  // Generate auth token (in production, this should come from backend)
+  const authToken = btoa(`${currentUser.id}_${currentUser.email}_vnit_websocket`);
+
+  websocket = new WebSocket(`${wsUrl}?user_id=${currentUser.id}&user_type=student&auth=${authToken}`);
+
+  websocket.onopen = function() {
+    console.log('WebSocket connected');
+    showNotification('Connected to real-time tracking', 'success');
+
+    // Start sending location updates if ride is active
+    if (activeRide) {
+      startRideTracking();
+    }
+  };
+
+  websocket.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+    handleWebSocketMessage(data);
+  };
+
+  websocket.onclose = function() {
+    console.log('WebSocket disconnected');
+    showNotification('Real-time tracking disconnected', 'warning');
+
+    // Attempt to reconnect after 5 seconds
+    setTimeout(connectWebSocket, 5000);
+  };
+
+  websocket.onerror = function(error) {
+    console.error('WebSocket error:', error);
+  };
+}
+
+function handleWebSocketMessage(data) {
+  switch (data.type) {
+    case 'connected':
+      console.log('WebSocket connection confirmed');
+      break;
+
+    case 'location_update':
+      updateVehicleLocation(data);
+      break;
+
+    case 'ride_status_update':
+      updateRideStatus(data);
+      break;
+
+    case 'driver_locations_batch':
+      updateAllDriverLocations(data.drivers);
+      break;
+
+    case 'chat_message':
+      showChatMessage(data);
+      break;
+
+    case 'sos_alert_nearby':
+      showSOSAlert(data);
+      break;
+
+    case 'notification':
+      showNotification(data.message, data.priority || 'info');
+      break;
+
+    case 'error':
+      showNotification(data.message, 'error');
+      break;
+  }
+}
+
+function updateVehicleLocation(data) {
+  if (!activeRide || !campusMap) return;
+
+  const vehicleId = `vehicle_${data.driver_id}`;
+  let marker = driverMarkers[vehicleId];
+
+  if (!marker) {
+    // Create new marker
+    const vehicleIcon = L.divIcon({
+      html: '<div style="background: linear-gradient(135deg, #2563eb, #22c55e); border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">🚗</div>',
+      iconSize: [30, 30],
+      className: 'vehicle-marker'
+    });
+
+    marker = L.marker([data.latitude, data.longitude], { icon: vehicleIcon })
+      .addTo(campusMap)
+      .bindPopup('Your E-Vehicle');
+
+    driverMarkers[vehicleId] = marker;
+  } else {
+    // Update existing marker position with smooth animation
+    marker.setLatLng([data.latitude, data.longitude]);
+  }
+
+  // Update ETA display
+  if (data.eta_minutes !== undefined) {
+    updateETA(data.eta_minutes);
+  }
+}
+
+function updateRideStatus(data) {
+  const statusElement = document.getElementById('ride-status');
+  if (statusElement) {
+    statusElement.textContent = data.status.toUpperCase();
+    statusElement.className = `status status-${data.status}`;
+  }
+
+  // Handle different status transitions
+  switch (data.status) {
+    case 'accepted':
+      showNotification('Driver assigned! Vehicle is on the way.', 'success');
+      break;
+    case 'started':
+      showNotification('Your ride has started!', 'success');
+      startRideTracking();
+      break;
+    case 'completed':
+      showNotification('Ride completed! Thank you for riding with eVNIT.', 'success');
+      stopRideTracking();
+      loadWalletBalance();
+      loadRideHistory();
+      break;
+    case 'cancelled':
+      showNotification('Ride was cancelled', 'warning');
+      stopRideTracking();
+      break;
+  }
+}
+
+function updateAllDriverLocations(drivers) {
+  if (!campusMap) return;
+
+  // Clear existing driver markers
+  Object.values(driverMarkers).forEach(marker => {
+    campusMap.removeLayer(marker);
+  });
+  driverMarkers = {};
+
+  // Add markers for all active drivers
+  drivers.forEach(driver => {
+    if (driver.current_lat && driver.current_lng) {
+      const driverIcon = L.divIcon({
+        html: `<div style="background: linear-gradient(135deg, #2563eb, #22c55e); border-radius: 50%; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-size: 12px;">🚗</div>`,
+        iconSize: [25, 25],
+        className: 'driver-marker'
+      });
+
+      const marker = L.marker([driver.current_lat, driver.current_lng], { icon: driverIcon })
+        .addTo(campusMap)
+        .bindPopup(`
+          <strong>${driver.vehicle_type}</strong><br/>
+          ${driver.vehicle_number}<br/>
+          Battery: ${driver.battery_level}%<br/>
+          Status: ${driver.vehicle_status}
+        `);
+
+      driverMarkers[`driver_${driver.driver_id}`] = marker;
+    }
+  });
+}
+
+function showChatMessage(data) {
+  const chatContainer = document.getElementById('chat-messages');
+  if (!chatContainer) return;
+
+  const messageDiv = document.createElement('div');
+  messageDiv.className = 'chat-message';
+  messageDiv.innerHTML = `
+    <strong>${data.sender_type}:</strong> ${data.message}
+    <small style="color: var(--muted); font-size: 0.8rem;">${new Date(data.timestamp * 1000).toLocaleTimeString()}</small>
+  `;
+
+  chatContainer.appendChild(messageDiv);
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+function showSOSAlert(data) {
+  const sosNotification = document.createElement('div');
+  sosNotification.className = 'sos-alert';
+  sosNotification.innerHTML = `
+    <div style="background: #dc2626; color: white; padding: 12px; border-radius: 8px; margin: 10px;">
+      <strong>🚨 SOS Alert Nearby</strong><br/>
+      ${data.distance_km} km from your location<br/>
+      <small>Check your app for details</small>
+    </div>
+  `;
+
+  document.body.appendChild(sosNotification);
+
+  // Auto-remove after 10 seconds
+  setTimeout(() => {
+    if (sosNotification.parentNode) {
+      sosNotification.parentNode.removeChild(sosNotification);
+    }
+  }, 10000);
+}
+
+function startRideTracking() {
+  if (!navigator.geolocation) {
+    showNotification('Geolocation not supported', 'error');
+    return;
+  }
+
+  rideTrackingInterval = setInterval(() => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const locationData = {
+          type: 'location_update',
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          timestamp: Date.now() / 1000
+        };
+
+        // Send via WebSocket if connected
+        if (websocket && websocket.readyState === WebSocket.OPEN) {
+          websocket.send(JSON.stringify(locationData));
+        }
+
+        // Update map with current location
+        updateStudentLocation(position.coords.latitude, position.coords.longitude);
+      },
+      (error) => {
+        console.error('Location tracking error:', error);
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 10000
+      }
+    );
+  }, 5000); // Update every 5 seconds
+}
+
+function stopRideTracking() {
+  if (rideTrackingInterval) {
+    clearInterval(rideTrackingInterval);
+    rideTrackingInterval = null;
+  }
+}
+
+function updateStudentLocation(lat, lng) {
+  if (!campusMap) return;
+
+  const studentIcon = L.divIcon({
+    html: '<div style="background: #3b82f6; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-size: 10px;">👤</div>',
+    iconSize: [20, 20],
+    className: 'student-marker'
+  });
+
+  let studentMarker = driverMarkers['student_current'];
+  if (studentMarker) {
+    studentMarker.setLatLng([lat, lng]);
+  } else {
+    studentMarker = L.marker([lat, lng], { icon: studentIcon })
+      .addTo(campusMap)
+      .bindPopup('Your Location');
+    driverMarkers['student_current'] = studentMarker;
+  }
+}
+
+function updateETA(minutes) {
+  const etaElement = document.getElementById('eta-display');
+  if (etaElement) {
+    etaElement.textContent = `ETA: ${minutes} min`;
+  }
+}
+
+function showNotification(message, type = 'info') {
+  // Check for notification permission
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification('eVNIT', {
+      body: message,
+      icon: '/favicon.ico',
+      badge: '/favicon.ico'
+    });
+  }
+
+  // Show in-app notification
+  const notification = document.createElement('div');
+  notification.className = `notification notification-${type}`;
+  notification.textContent = message;
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: ${type === 'success' ? '#22c55e' : type === 'error' ? '#dc2626' : type === 'warning' ? '#f59e0b' : '#3b82f6'};
+    color: white;
+    padding: 12px 16px;
+    border-radius: 8px;
+    z-index: 1000;
+    max-width: 300px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    animation: slideIn 0.3s ease;
+  `;
+
+  document.body.appendChild(notification);
+
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.parentNode.removeChild(notification);
+    }
+  }, 5000);
+}
 
 window.onload=()=>{
   checkAuth();
@@ -205,6 +534,25 @@ window.onload=()=>{
   loadWalletBalance();
   loadProfile();
   loadRideHistory();
+
+  // Request notification permission
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+
+  // Check online status
+  window.addEventListener('online', () => {
+    isOnline = true;
+    showNotification('Connection restored', 'success');
+    if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+      connectWebSocket();
+    }
+  });
+
+  window.addEventListener('offline', () => {
+    isOnline = false;
+    showNotification('Connection lost', 'warning');
+  });
 }
 
 function checkAuth(){
