@@ -136,9 +136,29 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system;
           <div style="display:grid;gap:12px;">
             <div class="input-row"><span>📍</span><select id="pickup-location"><option value="">Select Pickup Location</option></select></div>
             <div class="input-row"><span>🎯</span><select id="drop-location"><option value="">Select Drop Location</option></select></div>
+
+            <!-- Ride Sharing Options -->
+            <div style="background:#0a1323;padding:12px;border-radius:10px;border:1px solid #1a2740;">
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                <input type="checkbox" id="shared-ride" style="width:18px;height:18px;">
+                <span style="color:var(--text);">🚗 Share ride for ₹7 (30% discount)</span>
+              </label>
+              <div id="shared-ride-info" style="display:none;margin-top:10px;padding:8px;background:#061118;border-radius:6px;color:var(--text-soft);font-size:0.85rem;">
+                Share your ride with other students going the same direction. You'll save ₹3 and help reduce campus traffic!
+              </div>
+            </div>
+
             <button class="book-ride-btn" id="get-estimate-btn">Get Estimate</button>
           </div>
-          <p class="muted" style="margin-top:14px;">💡 Select pickup and drop location for fare estimate</p>
+
+          <!-- SOS Button -->
+          <div style="margin-top:16px;text-align:center;">
+            <button onclick="showSOSModal()" style="background:#dc2626;color:white;border:none;padding:16px 24px;border-radius:12px;font-size:1.1rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;margin:0 auto;box-shadow:0 4px 12px rgba(220,38,38,0.3);transition:all 0.2s;">
+              🚨 Emergency SOS
+            </button>
+          </div>
+
+          <p class="muted" style="margin-top:14px;">💡 Select pickup and drop location for fare estimate • Tap SOS for emergencies</p>
         </div>
       </div>
 
