@@ -24,6 +24,7 @@ $pickup_name = trim($_POST['pickup_name'] ?? '');
 $drop_lat = floatval($_POST['drop_lat'] ?? 0);
 $drop_lng = floatval($_POST['drop_lng'] ?? 0);
 $drop_name = trim($_POST['drop_name'] ?? '');
+$shared_ride = isset($_POST['shared_ride']) && $_POST['shared_ride'] === '1';
 
 // Validate locations
 if (!$pickup_lat || !$pickup_lng || !$drop_lat || !$drop_lng || !$pickup_name || !$drop_name) {
