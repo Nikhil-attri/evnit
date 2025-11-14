@@ -811,7 +811,28 @@ function showEstimateModal(data) {
     const est = data.estimate;
     const pickup = data.pickup;
     const drop = data.drop;
-    
+
+    let sharedRideInfo = '';
+    if (est.shared_ride && est.can_share && est.shared_passengers.length > 0) {
+        sharedRideInfo = `
+            <div class="estimate-detail" style="background:#064e3b;border:1px solid #0e7490;">
+                <span class="label" style="color:#67e8f9;">🚗 Shared Ride Available</span>
+                <span class="value" style="color:#67e8f9;">Save ₹${est.discount_applied} - Join ${est.shared_passengers.length} other students</span>
+            </div>
+            <div class="estimate-detail">
+                <span class="label">👥 Co-passengers:</span>
+                <span class="value">${est.shared_passengers.map(p => p.student_name).join(', ')}</span>
+            </div>
+        `;
+    } else if (est.shared_ride) {
+        sharedRideInfo = `
+            <div class="estimate-detail" style="background:#064e3b;border:1px solid #0e7490;">
+                <span class="label" style="color:#67e8f9;">🚗 Shared Ride Request</span>
+                <span class="value" style="color:#67e8f9;">Looking for compatible rides...</span>
+            </div>
+        `;
+    }
+
     const html = `
         <div class="estimate-detail">
             <span class="label">📍 Pickup:</span>
@@ -829,12 +850,24 @@ function showEstimateModal(data) {
             <span class="label">⏱️ ETA:</span>
             <span class="value">${est.eta_minutes} min</span>
         </div>
+        ${est.shared_ride ? `
+        <div class="estimate-detail" style="background:#065f46;border:1px solid #0e7490;">
+            <span class="label" style="color:#4ade80;">💰 Shared Fare:</span>
+            <span class="value" style="color:#4ade80;font-size:1.2rem;">₹${est.fare}</span>
+        </div>
+        <div class="estimate-detail" style="background:#374151;border:1px solid #4b5563;">
+            <span class="label" style="color:#9ca3af;">💸 Regular Fare:</span>
+            <span class="value" style="color:#9ca3af;text-decoration:line-through;">₹${est.base_fare}</span>
+        </div>
+        ` : `
         <div class="estimate-detail" style="background:#14532d;border:1px solid #166534;">
             <span class="label" style="color:#bbf7d0;">💰 Fare:</span>
             <span class="value" style="color:#bbf7d0;font-size:1.2rem;">₹${est.fare}</span>
         </div>
-        ${est.sufficient_balance ? 
-            '<div class="alert alert-success">✅ Sufficient wallet balance</div>' : 
+        `}
+        ${sharedRideInfo}
+        ${est.sufficient_balance ?
+            '<div class="alert alert-success">✅ Sufficient wallet balance</div>' :
             '<div class="alert alert-error">❌ Insufficient balance. Please recharge wallet</div>'
         }
         <hr style="border-color:#1f2937;margin:14px 0;">
@@ -850,8 +883,12 @@ function showEstimateModal(data) {
             <span class="label">🕒 Vehicle ETA:</span>
             <span class="value">${est.vehicle_eta_minutes} min</span>
         </div>
+        <div class="estimate-detail">
+            <span class="label">👥 Available Seats:</span>
+            <span class="value">${est.vehicle_info.available_seats}</span>
+        </div>
     `;
-    
+
     document.getElementById('estimate-details').innerHTML = html;
     document.getElementById('confirm-ride-btn').disabled = !est.sufficient_balance;
     document.getElementById('estimate-modal').classList.add('show');
