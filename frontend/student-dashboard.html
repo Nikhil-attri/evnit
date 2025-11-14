@@ -103,9 +103,11 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system;
     </div>
     <nav class="menu">
       <a class="active" onclick="showSection('booking', event)">🚀 Book Ride</a>
+      <a onclick="showSection('tracking', event)">📍 Track Ride</a>
       <a onclick="showSection('profile', event)">👤 Profile</a>
       <a onclick="showSection('history', event)">📜 Ride History</a>
       <a onclick="showSection('map', event)">🗺 Campus Map</a>
+      <a onclick="showSection('chat', event)">💬 Chat</a>
     </nav>
     <div style="position:absolute; bottom:14px; left:20px; right:20px; font-size:.85rem; color:var(--muted); border-top:1px dashed #1e293b; padding-top:10px;">
       Logged in as <strong id="sidebar-user-name">Student</strong><br/>
@@ -134,9 +136,29 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system;
           <div style="display:grid;gap:12px;">
             <div class="input-row"><span>📍</span><select id="pickup-location"><option value="">Select Pickup Location</option></select></div>
             <div class="input-row"><span>🎯</span><select id="drop-location"><option value="">Select Drop Location</option></select></div>
+
+            <!-- Ride Sharing Options -->
+            <div style="background:#0a1323;padding:12px;border-radius:10px;border:1px solid #1a2740;">
+              <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                <input type="checkbox" id="shared-ride" style="width:18px;height:18px;">
+                <span style="color:var(--text);">🚗 Share ride for ₹7 (30% discount)</span>
+              </label>
+              <div id="shared-ride-info" style="display:none;margin-top:10px;padding:8px;background:#061118;border-radius:6px;color:var(--text-soft);font-size:0.85rem;">
+                Share your ride with other students going the same direction. You'll save ₹3 and help reduce campus traffic!
+              </div>
+            </div>
+
             <button class="book-ride-btn" id="get-estimate-btn">Get Estimate</button>
           </div>
-          <p class="muted" style="margin-top:14px;">💡 Select pickup and drop location for fare estimate</p>
+
+          <!-- SOS Button -->
+          <div style="margin-top:16px;text-align:center;">
+            <button onclick="showSOSModal()" style="background:#dc2626;color:white;border:none;padding:16px 24px;border-radius:12px;font-size:1.1rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;margin:0 auto;box-shadow:0 4px 12px rgba(220,38,38,0.3);transition:all 0.2s;">
+              🚨 Emergency SOS
+            </button>
+          </div>
+
+          <p class="muted" style="margin-top:14px;">💡 Select pickup and drop location for fare estimate • Tap SOS for emergencies</p>
         </div>
       </div>
 
@@ -159,6 +181,38 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system;
       <div class="card section-content" id="history-section" style="display:none;">
         <div class="card-header"><h3 class="card-title">Ride History</h3></div>
         <div class="card-body"><div id="history-list">Loading...</div></div>
+      </div>
+
+      <!-- Active Ride Tracking -->
+      <div class="card section-content" id="tracking-section" style="display:none;">
+        <div class="card-header"><h3 class="card-title">Track Your Ride</h3><span class="pill" id="ride-status">NO ACTIVE RIDE</span></div>
+        <div class="card-body">
+          <div id="eta-display" style="background:#0a1323;padding:12px;border-radius:8px;text-align:center;font-size:1.2rem;color:var(--accent);margin-bottom:16px;display:none;">
+            ETA: -- min
+          </div>
+          <div id="tracking-map" style="width:100%;height:400px;border-radius:12px;border:1px solid #16304a;overflow:hidden;"></div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;">
+            <button class="btn" onclick="contactDriver()">📞 Contact Driver</button>
+            <button class="btn" onclick="shareRideStatus()">📤 Share Status</button>
+            <button class="btn" style="background:#dc2626;color:white;" onclick="emergencyCancel()">🚨 Emergency Cancel</button>
+            <button class="btn" onclick="reportIssue()">🐛 Report Issue</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat -->
+      <div class="card section-content" id="chat-section" style="display:none;">
+        <div class="card-header"><h3 class="card-title">Ride Chat</h3></div>
+        <div class="card-body">
+          <div id="chat-messages" style="height:400px;overflow-y:auto;background:#0a1323;padding:16px;border-radius:8px;margin-bottom:16px;">
+            <div class="muted" style="text-align:center;">Chat messages will appear here during active rides</div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr auto;gap:8px;">
+            <input type="text" id="chat-input" placeholder="Type message..." style="background:#0a1323;border:1px solid #1a2740;color:var(--text);padding:12px;border-radius:8px;">
+            <button class="btn primary" onclick="sendChatMessage()">Send</button>
+          </div>
+        </div>
       </div>
 
       <!-- Map -->
@@ -191,13 +245,365 @@ body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system;
   </div>
 </div>
 
+<!-- SOS Modal -->
+<div class="modal" id="sos-modal">
+  <div class="modal-content" style="max-width:400px;">
+    <button class="close-btn" onclick="closeModal('sos-modal')">×</button>
+    <h2 style="color:#dc2626;">🚨 Emergency Alert</h2>
+    <div style="background:#7f1d1d;padding:12px;border-radius:8px;margin:16px 0;color:white;">
+      This will alert VNIT Security and nearby drivers with your current location.
+    </div>
+    <div class="input-row" style="margin:16px 0;">
+      <span>📝</span>
+      <input type="text" id="sos-message" placeholder="Describe emergency (optional)" maxlength="100">
+    </div>
+    <div style="display:grid;gap:12px;">
+      <button onclick="sendSOSAlert()" style="background:#dc2626;color:white;border:none;padding:16px;border-radius:12px;font-size:1.1rem;font-weight:600;cursor:pointer;">
+        🚨 Send SOS Alert
+      </button>
+      <button class="btn" onclick="closeModal('sos-modal')">
+        Cancel
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+<!-- PWA Manifest -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#22c55e">
+
+<!-- Service Worker Registration -->
 <script>
-let campusLocations=[],currentEstimate=null;
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then(registration => {
+      console.log('SW registered: ', registration);
+    }).catch(registrationError => {
+      console.log('SW registration failed: ', registrationError);
+    });
+  });
+}
+</script>
+
+<script>
+let campusLocations=[], currentEstimate=null;
 const API_BASE='../backend/api';
 let campusMap=null, campusMarkers=[], driverMarkers={};
+let websocket=null, currentUser=null;
+let activeRide=null, rideTrackingInterval=null;
+let isOnline = navigator.onLine;
+
+// WebSocket connection
+function connectWebSocket() {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = `${protocol}//${window.location.hostname}:8080`;
+
+  // Generate auth token (in production, this should come from backend)
+  const authToken = btoa(`${currentUser.id}_${currentUser.email}_vnit_websocket`);
+
+  websocket = new WebSocket(`${wsUrl}?user_id=${currentUser.id}&user_type=student&auth=${authToken}`);
+
+  websocket.onopen = function() {
+    console.log('WebSocket connected');
+    showNotification('Connected to real-time tracking', 'success');
+
+    // Start sending location updates if ride is active
+    if (activeRide) {
+      startRideTracking();
+    }
+  };
+
+  websocket.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+    handleWebSocketMessage(data);
+  };
+
+  websocket.onclose = function() {
+    console.log('WebSocket disconnected');
+    showNotification('Real-time tracking disconnected', 'warning');
+
+    // Attempt to reconnect after 5 seconds
+    setTimeout(connectWebSocket, 5000);
+  };
+
+  websocket.onerror = function(error) {
+    console.error('WebSocket error:', error);
+  };
+}
+
+function handleWebSocketMessage(data) {
+  switch (data.type) {
+    case 'connected':
+      console.log('WebSocket connection confirmed');
+      break;
+
+    case 'location_update':
+      updateVehicleLocation(data);
+      break;
+
+    case 'ride_status_update':
+      updateRideStatus(data);
+      break;
+
+    case 'driver_locations_batch':
+      updateAllDriverLocations(data.drivers);
+      break;
+
+    case 'chat_message':
+      showChatMessage(data);
+      break;
+
+    case 'sos_alert_nearby':
+      showSOSAlert(data);
+      break;
+
+    case 'notification':
+      showNotification(data.message, data.priority || 'info');
+      break;
+
+    case 'error':
+      showNotification(data.message, 'error');
+      break;
+  }
+}
+
+function updateVehicleLocation(data) {
+  if (!activeRide || !campusMap) return;
+
+  const vehicleId = `vehicle_${data.driver_id}`;
+  let marker = driverMarkers[vehicleId];
+
+  if (!marker) {
+    // Create new marker
+    const vehicleIcon = L.divIcon({
+      html: '<div style="background: linear-gradient(135deg, #2563eb, #22c55e); border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">🚗</div>',
+      iconSize: [30, 30],
+      className: 'vehicle-marker'
+    });
+
+    marker = L.marker([data.latitude, data.longitude], { icon: vehicleIcon })
+      .addTo(campusMap)
+      .bindPopup('Your E-Vehicle');
+
+    driverMarkers[vehicleId] = marker;
+  } else {
+    // Update existing marker position with smooth animation
+    marker.setLatLng([data.latitude, data.longitude]);
+  }
+
+  // Update ETA display
+  if (data.eta_minutes !== undefined) {
+    updateETA(data.eta_minutes);
+  }
+}
+
+function updateRideStatus(data) {
+  const statusElement = document.getElementById('ride-status');
+  if (statusElement) {
+    statusElement.textContent = data.status.toUpperCase();
+    statusElement.className = `status status-${data.status}`;
+  }
+
+  // Handle different status transitions
+  switch (data.status) {
+    case 'accepted':
+      showNotification('Driver assigned! Vehicle is on the way.', 'success');
+      break;
+    case 'started':
+      showNotification('Your ride has started!', 'success');
+      startRideTracking();
+      break;
+    case 'completed':
+      showNotification('Ride completed! Thank you for riding with eVNIT.', 'success');
+      stopRideTracking();
+      loadWalletBalance();
+      loadRideHistory();
+      break;
+    case 'cancelled':
+      showNotification('Ride was cancelled', 'warning');
+      stopRideTracking();
+      break;
+  }
+}
+
+function updateAllDriverLocations(drivers) {
+  if (!campusMap) return;
+
+  // Clear existing driver markers
+  Object.values(driverMarkers).forEach(marker => {
+    campusMap.removeLayer(marker);
+  });
+  driverMarkers = {};
+
+  // Add markers for all active drivers
+  drivers.forEach(driver => {
+    if (driver.current_lat && driver.current_lng) {
+      const driverIcon = L.divIcon({
+        html: `<div style="background: linear-gradient(135deg, #2563eb, #22c55e); border-radius: 50%; width: 25px; height: 25px; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-size: 12px;">🚗</div>`,
+        iconSize: [25, 25],
+        className: 'driver-marker'
+      });
+
+      const marker = L.marker([driver.current_lat, driver.current_lng], { icon: driverIcon })
+        .addTo(campusMap)
+        .bindPopup(`
+          <strong>${driver.vehicle_type}</strong><br/>
+          ${driver.vehicle_number}<br/>
+          Battery: ${driver.battery_level}%<br/>
+          Status: ${driver.vehicle_status}
+        `);
+
+      driverMarkers[`driver_${driver.driver_id}`] = marker;
+    }
+  });
+}
+
+function showChatMessage(data) {
+  const chatContainer = document.getElementById('chat-messages');
+  if (!chatContainer) return;
+
+  const messageDiv = document.createElement('div');
+  messageDiv.className = 'chat-message';
+  messageDiv.innerHTML = `
+    <strong>${data.sender_type}:</strong> ${data.message}
+    <small style="color: var(--muted); font-size: 0.8rem;">${new Date(data.timestamp * 1000).toLocaleTimeString()}</small>
+  `;
+
+  chatContainer.appendChild(messageDiv);
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+function showSOSAlert(data) {
+  const sosNotification = document.createElement('div');
+  sosNotification.className = 'sos-alert';
+  sosNotification.innerHTML = `
+    <div style="background: #dc2626; color: white; padding: 12px; border-radius: 8px; margin: 10px;">
+      <strong>🚨 SOS Alert Nearby</strong><br/>
+      ${data.distance_km} km from your location<br/>
+      <small>Check your app for details</small>
+    </div>
+  `;
+
+  document.body.appendChild(sosNotification);
+
+  // Auto-remove after 10 seconds
+  setTimeout(() => {
+    if (sosNotification.parentNode) {
+      sosNotification.parentNode.removeChild(sosNotification);
+    }
+  }, 10000);
+}
+
+function startRideTracking() {
+  if (!navigator.geolocation) {
+    showNotification('Geolocation not supported', 'error');
+    return;
+  }
+
+  rideTrackingInterval = setInterval(() => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const locationData = {
+          type: 'location_update',
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+          timestamp: Date.now() / 1000
+        };
+
+        // Send via WebSocket if connected
+        if (websocket && websocket.readyState === WebSocket.OPEN) {
+          websocket.send(JSON.stringify(locationData));
+        }
+
+        // Update map with current location
+        updateStudentLocation(position.coords.latitude, position.coords.longitude);
+      },
+      (error) => {
+        console.error('Location tracking error:', error);
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 10000
+      }
+    );
+  }, 5000); // Update every 5 seconds
+}
+
+function stopRideTracking() {
+  if (rideTrackingInterval) {
+    clearInterval(rideTrackingInterval);
+    rideTrackingInterval = null;
+  }
+}
+
+function updateStudentLocation(lat, lng) {
+  if (!campusMap) return;
+
+  const studentIcon = L.divIcon({
+    html: '<div style="background: #3b82f6; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); font-size: 10px;">👤</div>',
+    iconSize: [20, 20],
+    className: 'student-marker'
+  });
+
+  let studentMarker = driverMarkers['student_current'];
+  if (studentMarker) {
+    studentMarker.setLatLng([lat, lng]);
+  } else {
+    studentMarker = L.marker([lat, lng], { icon: studentIcon })
+      .addTo(campusMap)
+      .bindPopup('Your Location');
+    driverMarkers['student_current'] = studentMarker;
+  }
+}
+
+function updateETA(minutes) {
+  const etaElement = document.getElementById('eta-display');
+  if (etaElement) {
+    etaElement.textContent = `ETA: ${minutes} min`;
+  }
+}
+
+function showNotification(message, type = 'info') {
+  // Check for notification permission
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification('eVNIT', {
+      body: message,
+      icon: '/favicon.ico',
+      badge: '/favicon.ico'
+    });
+  }
+
+  // Show in-app notification
+  const notification = document.createElement('div');
+  notification.className = `notification notification-${type}`;
+  notification.textContent = message;
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: ${type === 'success' ? '#22c55e' : type === 'error' ? '#dc2626' : type === 'warning' ? '#f59e0b' : '#3b82f6'};
+    color: white;
+    padding: 12px 16px;
+    border-radius: 8px;
+    z-index: 1000;
+    max-width: 300px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    animation: slideIn 0.3s ease;
+  `;
+
+  document.body.appendChild(notification);
+
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.parentNode.removeChild(notification);
+    }
+  }, 5000);
+}
 
 window.onload=()=>{
   checkAuth();
@@ -205,15 +611,48 @@ window.onload=()=>{
   loadWalletBalance();
   loadProfile();
   loadRideHistory();
+
+  // Request notification permission
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+
+  // Check online status
+  window.addEventListener('online', () => {
+    isOnline = true;
+    showNotification('Connection restored', 'success');
+    if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+      connectWebSocket();
+    }
+  });
+
+  window.addEventListener('offline', () => {
+    isOnline = false;
+    showNotification('Connection lost', 'warning');
+  });
 }
 
 function checkAuth(){
   const urlParams = new URLSearchParams(window.location.search);
   const studentName = urlParams.get('name') || 'Student';
   const studentEmail = urlParams.get('email') || 'student@vnit.ac.in';
-  
+
+  // Set current user for WebSocket auth
+  currentUser = {
+    id: urlParams.get('student_id') || 1,
+    name: studentName,
+    email: studentEmail,
+    type: 'student'
+  };
+
   document.getElementById('sidebar-user-name').textContent = studentName;
   document.getElementById('sidebar-user-email').textContent = studentEmail;
+
+  // Connect WebSocket
+  connectWebSocket();
+
+  // Load active ride if exists
+  loadActiveRide();
 }
 
 function showSection(section,event){
@@ -372,7 +811,28 @@ function showEstimateModal(data) {
     const est = data.estimate;
     const pickup = data.pickup;
     const drop = data.drop;
-    
+
+    let sharedRideInfo = '';
+    if (est.shared_ride && est.can_share && est.shared_passengers.length > 0) {
+        sharedRideInfo = `
+            <div class="estimate-detail" style="background:#064e3b;border:1px solid #0e7490;">
+                <span class="label" style="color:#67e8f9;">🚗 Shared Ride Available</span>
+                <span class="value" style="color:#67e8f9;">Save ₹${est.discount_applied} - Join ${est.shared_passengers.length} other students</span>
+            </div>
+            <div class="estimate-detail">
+                <span class="label">👥 Co-passengers:</span>
+                <span class="value">${est.shared_passengers.map(p => p.student_name).join(', ')}</span>
+            </div>
+        `;
+    } else if (est.shared_ride) {
+        sharedRideInfo = `
+            <div class="estimate-detail" style="background:#064e3b;border:1px solid #0e7490;">
+                <span class="label" style="color:#67e8f9;">🚗 Shared Ride Request</span>
+                <span class="value" style="color:#67e8f9;">Looking for compatible rides...</span>
+            </div>
+        `;
+    }
+
     const html = `
         <div class="estimate-detail">
             <span class="label">📍 Pickup:</span>
@@ -390,12 +850,24 @@ function showEstimateModal(data) {
             <span class="label">⏱️ ETA:</span>
             <span class="value">${est.eta_minutes} min</span>
         </div>
+        ${est.shared_ride ? `
+        <div class="estimate-detail" style="background:#065f46;border:1px solid #0e7490;">
+            <span class="label" style="color:#4ade80;">💰 Shared Fare:</span>
+            <span class="value" style="color:#4ade80;font-size:1.2rem;">₹${est.fare}</span>
+        </div>
+        <div class="estimate-detail" style="background:#374151;border:1px solid #4b5563;">
+            <span class="label" style="color:#9ca3af;">💸 Regular Fare:</span>
+            <span class="value" style="color:#9ca3af;text-decoration:line-through;">₹${est.base_fare}</span>
+        </div>
+        ` : `
         <div class="estimate-detail" style="background:#14532d;border:1px solid #166534;">
             <span class="label" style="color:#bbf7d0;">💰 Fare:</span>
             <span class="value" style="color:#bbf7d0;font-size:1.2rem;">₹${est.fare}</span>
         </div>
-        ${est.sufficient_balance ? 
-            '<div class="alert alert-success">✅ Sufficient wallet balance</div>' : 
+        `}
+        ${sharedRideInfo}
+        ${est.sufficient_balance ?
+            '<div class="alert alert-success">✅ Sufficient wallet balance</div>' :
             '<div class="alert alert-error">❌ Insufficient balance. Please recharge wallet</div>'
         }
         <hr style="border-color:#1f2937;margin:14px 0;">
@@ -411,8 +883,12 @@ function showEstimateModal(data) {
             <span class="label">🕒 Vehicle ETA:</span>
             <span class="value">${est.vehicle_eta_minutes} min</span>
         </div>
+        <div class="estimate-detail">
+            <span class="label">👥 Available Seats:</span>
+            <span class="value">${est.vehicle_info.available_seats}</span>
+        </div>
     `;
-    
+
     document.getElementById('estimate-details').innerHTML = html;
     document.getElementById('confirm-ride-btn').disabled = !est.sufficient_balance;
     document.getElementById('estimate-modal').classList.add('show');
@@ -544,14 +1020,14 @@ function initCampusMap(){
 
 async function fetchDriverLocations(){
   if(!campusMap) return;
-  
+
   try{
     const res = await fetch(`${API_BASE}/drivers/get_active_drivers.php`, { credentials: 'include' });
     const data = await res.json();
     if(data.status==='success' && data.drivers){
       Object.values(driverMarkers).forEach(m=>campusMap.removeLayer(m));
       driverMarkers={};
-      
+
       data.drivers.forEach(d=>{
         if(d.latitude && d.longitude){
           const marker = L.marker([d.latitude,d.longitude])
@@ -565,6 +1041,276 @@ async function fetchDriverLocations(){
     console.error('Failed to fetch drivers',e);
   }
 }
+
+// ====== NEW ENHANCED FUNCTIONS ======
+
+// Ride sharing checkbox handler
+document.getElementById('shared-ride').addEventListener('change', function() {
+  const info = document.getElementById('shared-ride-info');
+  info.style.display = this.checked ? 'block' : 'none';
+});
+
+// SOS Functions
+function showSOSModal() {
+  if (!navigator.geolocation) {
+    showNotification('Location services required for SOS', 'error');
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      // Store current location for SOS
+      currentUser.currentLocation = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude
+      };
+      document.getElementById('sos-modal').classList.add('show');
+    },
+    (error) => {
+      showNotification('Cannot get location for SOS', 'error');
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+
+function sendSOSAlert() {
+  const message = document.getElementById('sos-message').value.trim() || 'Emergency alert from eVNIT student';
+
+  if (!currentUser.currentLocation) {
+    showNotification('Location not available for SOS', 'error');
+    return;
+  }
+
+  const sosData = {
+    type: 'sos_alert',
+    latitude: currentUser.currentLocation.latitude,
+    longitude: currentUser.currentLocation.longitude,
+    message: message,
+    timestamp: Date.now() / 1000
+  };
+
+  if (websocket && websocket.readyState === WebSocket.OPEN) {
+    websocket.send(JSON.stringify(sosData));
+  }
+
+  // Also send via HTTP as backup
+  fetch(`${API_BASE}/sos/send_alert.php`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(sosData),
+    credentials: 'include'
+  }).catch(e => console.error('SOS HTTP error:', e));
+
+  closeModal('sos-modal');
+  showNotification('SOS alert sent! VNIT Security has been notified.', 'success');
+
+  // Show countdown until help arrival
+  showHelpCountdown();
+}
+
+function showHelpCountdown() {
+  let seconds = 120; // 2 minutes estimated response time
+  const countdownDiv = document.createElement('div');
+  countdownDiv.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #dc2626;
+    color: white;
+    padding: 24px;
+    border-radius: 12px;
+    text-align: center;
+    z-index: 10000;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  `;
+  countdownDiv.innerHTML = `
+    <h3>🚨 Help On The Way</h3>
+    <p style="font-size: 1.2rem; margin: 16px 0;">ETA: <span id="sos-timer">${Math.floor(seconds/60)}:${(seconds%60).toString().padStart(2,'0')}</span></p>
+    <p>VNIT Security is responding to your location</p>
+  `;
+
+  document.body.appendChild(countdownDiv);
+
+  const interval = setInterval(() => {
+    seconds--;
+    if (seconds <= 0) {
+      clearInterval(interval);
+      if (countdownDiv.parentNode) {
+        countdownDiv.parentNode.removeChild(countdownDiv);
+      }
+      showNotification('Help should have arrived. Stay safe!', 'success');
+    } else {
+      const timerEl = document.getElementById('sos-timer');
+      if (timerEl) {
+        timerEl.textContent = `${Math.floor(seconds/60)}:${(seconds%60).toString().padStart(2,'0')}`;
+      }
+    }
+  }, 1000);
+}
+
+// Active ride tracking
+async function loadActiveRide() {
+  try {
+    const res = await fetch(`${API_BASE}/rides/get_active_ride.php`, { credentials: 'include' });
+    const data = await res.json();
+
+    if (data.status === 'success' && data.ride) {
+      activeRide = data.ride;
+      showSection('tracking');
+      document.getElementById('ride-status').textContent = data.ride.status.toUpperCase();
+      document.getElementById('eta-display').style.display = 'block';
+    }
+  } catch (e) {
+    console.error('Failed to load active ride:', e);
+  }
+}
+
+// Chat functions
+function sendChatMessage() {
+  const input = document.getElementById('chat-input');
+  const message = input.value.trim();
+
+  if (!message || !activeRide) {
+    return;
+  }
+
+  const chatData = {
+    type: 'chat_message',
+    recipient_id: activeRide.driver_id,
+    recipient_type: 'driver',
+    message: message,
+    ride_id: activeRide.ride_id
+  };
+
+  if (websocket && websocket.readyState === WebSocket.OPEN) {
+    websocket.send(JSON.stringify(chatData));
+  }
+
+  input.value = '';
+}
+
+// Utility functions
+function contactDriver() {
+  if (!activeRide || !activeRide.driver_phone) {
+    showNotification('Driver contact not available', 'error');
+    return;
+  }
+  window.location.href = `tel:${activeRide.driver_phone}`;
+}
+
+function shareRideStatus() {
+  if (!activeRide) {
+    showNotification('No active ride to share', 'error');
+    return;
+  }
+
+  const shareText = `🚗 eVNIT Ride - Status: ${activeRide.status.toUpperCase()}\n📍 ETA: ${activeRide.estimated_eta || 'Calculating...'}\n🎯 Destination: ${activeRide.drop_name}`;
+
+  if (navigator.share) {
+    navigator.share({
+      title: 'eVNIT Ride Status',
+      text: shareText
+    });
+  } else {
+    // Fallback - copy to clipboard
+    navigator.clipboard.writeText(shareText).then(() => {
+      showNotification('Ride status copied to clipboard', 'success');
+    });
+  }
+}
+
+function emergencyCancel() {
+  if (confirm('⚠️ Emergency cancel ride? This will notify security immediately.')) {
+    sendSOSAlert();
+    if (activeRide) {
+      // Cancel the ride
+      fetch(`${API_BASE}/rides/cancel_ride.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ride_id: activeRide.ride_id,
+          reason: 'Emergency cancel'
+        }),
+        credentials: 'include'
+      });
+    }
+  }
+}
+
+function reportIssue() {
+  const issue = prompt('Please describe the issue:');
+  if (issue && issue.trim()) {
+    fetch(`${API_BASE}/support/submit_issue.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        issue: issue.trim(),
+        ride_id: activeRide?.ride_id
+      }),
+      credentials: 'include'
+    }).then(() => {
+      showNotification('Issue reported successfully', 'success');
+    }).catch(() => {
+      showNotification('Failed to report issue', 'error');
+    });
+  }
+}
+
+// Enhanced estimate handler with ride sharing
+document.getElementById('get-estimate-btn').addEventListener('click', async () => {
+    const pickup = document.getElementById('pickup-location');
+    const drop = document.getElementById('drop-location');
+    const sharedRide = document.getElementById('shared-ride').checked;
+
+    if (!pickup.value || !drop.value) {
+        alert('Please select both pickup and drop locations');
+        return;
+    }
+    if (pickup.value === drop.value) {
+        alert('Pickup and drop locations cannot be same');
+        return;
+    }
+
+    const btn = document.getElementById('get-estimate-btn');
+    btn.disabled = true;
+    btn.textContent = 'Getting estimate...';
+
+    try {
+        const pOpt = pickup.options[pickup.selectedIndex];
+        const dOpt = drop.options[drop.selectedIndex];
+
+        const formData = new FormData();
+        formData.append('pickup_lat', pOpt.dataset.lat);
+        formData.append('pickup_lng', pOpt.dataset.lng);
+        formData.append('pickup_name', pOpt.text);
+        formData.append('drop_lat', dOpt.dataset.lat);
+        formData.append('drop_lng', dOpt.dataset.lng);
+        formData.append('drop_name', dOpt.text);
+        formData.append('shared_ride', sharedRide ? '1' : '0');
+
+        const res = await fetch(`${API_BASE}/rides/get_estimate.php`, {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+        });
+
+        const data = await res.json();
+
+        if (data.status === 'success') {
+            currentEstimate = data.estimate;
+            showEstimateModal(data);
+        } else {
+            alert(data.message || 'Failed to get estimate');
+        }
+    } catch (e) {
+        alert('Error: ' + e.message);
+        console.error('Estimate error:', e);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Get Estimate';
+    }
+});
 </script>
 </body>
 </html>
