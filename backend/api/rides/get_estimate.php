@@ -143,6 +143,11 @@ echo json_encode([
         'distance_km'=>round($distance_km,2),
         'eta_minutes'=>$eta_minutes,
         'fare'=>$fare,
+        'shared_ride'=>$shared_ride,
+        'can_share'=>$can_share,
+        'shared_passengers'=>$shared_passengers,
+        'base_fare'=>$base_fare,
+        'discount_applied'=>$shared_ride ? $base_fare - $fare : 0,
         'vehicle_info'=>[
             'vehicle_id'=>$vehicle['id'],
             'vehicle_number'=>$vehicle['vehicle_number'],
