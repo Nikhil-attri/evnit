@@ -983,14 +983,14 @@ function initCampusMap(){
 
 async function fetchDriverLocations(){
   if(!campusMap) return;
-  
+
   try{
     const res = await fetch(`${API_BASE}/drivers/get_active_drivers.php`, { credentials: 'include' });
     const data = await res.json();
     if(data.status==='success' && data.drivers){
       Object.values(driverMarkers).forEach(m=>campusMap.removeLayer(m));
       driverMarkers={};
-      
+
       data.drivers.forEach(d=>{
         if(d.latitude && d.longitude){
           const marker = L.marker([d.latitude,d.longitude])
@@ -1004,6 +1004,276 @@ async function fetchDriverLocations(){
     console.error('Failed to fetch drivers',e);
   }
 }
+
+// ====== NEW ENHANCED FUNCTIONS ======
+
+// Ride sharing checkbox handler
+document.getElementById('shared-ride').addEventListener('change', function() {
+  const info = document.getElementById('shared-ride-info');
+  info.style.display = this.checked ? 'block' : 'none';
+});
+
+// SOS Functions
+function showSOSModal() {
+  if (!navigator.geolocation) {
+    showNotification('Location services required for SOS', 'error');
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      // Store current location for SOS
+      currentUser.currentLocation = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude
+      };
+      document.getElementById('sos-modal').classList.add('show');
+    },
+    (error) => {
+      showNotification('Cannot get location for SOS', 'error');
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+
+function sendSOSAlert() {
+  const message = document.getElementById('sos-message').value.trim() || 'Emergency alert from eVNIT student';
+
+  if (!currentUser.currentLocation) {
+    showNotification('Location not available for SOS', 'error');
+    return;
+  }
+
+  const sosData = {
+    type: 'sos_alert',
+    latitude: currentUser.currentLocation.latitude,
+    longitude: currentUser.currentLocation.longitude,
+    message: message,
+    timestamp: Date.now() / 1000
+  };
+
+  if (websocket && websocket.readyState === WebSocket.OPEN) {
+    websocket.send(JSON.stringify(sosData));
+  }
+
+  // Also send via HTTP as backup
+  fetch(`${API_BASE}/sos/send_alert.php`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(sosData),
+    credentials: 'include'
+  }).catch(e => console.error('SOS HTTP error:', e));
+
+  closeModal('sos-modal');
+  showNotification('SOS alert sent! VNIT Security has been notified.', 'success');
+
+  // Show countdown until help arrival
+  showHelpCountdown();
+}
+
+function showHelpCountdown() {
+  let seconds = 120; // 2 minutes estimated response time
+  const countdownDiv = document.createElement('div');
+  countdownDiv.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #dc2626;
+    color: white;
+    padding: 24px;
+    border-radius: 12px;
+    text-align: center;
+    z-index: 10000;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  `;
+  countdownDiv.innerHTML = `
+    <h3>🚨 Help On The Way</h3>
+    <p style="font-size: 1.2rem; margin: 16px 0;">ETA: <span id="sos-timer">${Math.floor(seconds/60)}:${(seconds%60).toString().padStart(2,'0')}</span></p>
+    <p>VNIT Security is responding to your location</p>
+  `;
+
+  document.body.appendChild(countdownDiv);
+
+  const interval = setInterval(() => {
+    seconds--;
+    if (seconds <= 0) {
+      clearInterval(interval);
+      if (countdownDiv.parentNode) {
+        countdownDiv.parentNode.removeChild(countdownDiv);
+      }
+      showNotification('Help should have arrived. Stay safe!', 'success');
+    } else {
+      const timerEl = document.getElementById('sos-timer');
+      if (timerEl) {
+        timerEl.textContent = `${Math.floor(seconds/60)}:${(seconds%60).toString().padStart(2,'0')}`;
+      }
+    }
+  }, 1000);
+}
+
+// Active ride tracking
+async function loadActiveRide() {
+  try {
+    const res = await fetch(`${API_BASE}/rides/get_active_ride.php`, { credentials: 'include' });
+    const data = await res.json();
+
+    if (data.status === 'success' && data.ride) {
+      activeRide = data.ride;
+      showSection('tracking');
+      document.getElementById('ride-status').textContent = data.ride.status.toUpperCase();
+      document.getElementById('eta-display').style.display = 'block';
+    }
+  } catch (e) {
+    console.error('Failed to load active ride:', e);
+  }
+}
+
+// Chat functions
+function sendChatMessage() {
+  const input = document.getElementById('chat-input');
+  const message = input.value.trim();
+
+  if (!message || !activeRide) {
+    return;
+  }
+
+  const chatData = {
+    type: 'chat_message',
+    recipient_id: activeRide.driver_id,
+    recipient_type: 'driver',
+    message: message,
+    ride_id: activeRide.ride_id
+  };
+
+  if (websocket && websocket.readyState === WebSocket.OPEN) {
+    websocket.send(JSON.stringify(chatData));
+  }
+
+  input.value = '';
+}
+
+// Utility functions
+function contactDriver() {
+  if (!activeRide || !activeRide.driver_phone) {
+    showNotification('Driver contact not available', 'error');
+    return;
+  }
+  window.location.href = `tel:${activeRide.driver_phone}`;
+}
+
+function shareRideStatus() {
+  if (!activeRide) {
+    showNotification('No active ride to share', 'error');
+    return;
+  }
+
+  const shareText = `🚗 eVNIT Ride - Status: ${activeRide.status.toUpperCase()}\n📍 ETA: ${activeRide.estimated_eta || 'Calculating...'}\n🎯 Destination: ${activeRide.drop_name}`;
+
+  if (navigator.share) {
+    navigator.share({
+      title: 'eVNIT Ride Status',
+      text: shareText
+    });
+  } else {
+    // Fallback - copy to clipboard
+    navigator.clipboard.writeText(shareText).then(() => {
+      showNotification('Ride status copied to clipboard', 'success');
+    });
+  }
+}
+
+function emergencyCancel() {
+  if (confirm('⚠️ Emergency cancel ride? This will notify security immediately.')) {
+    sendSOSAlert();
+    if (activeRide) {
+      // Cancel the ride
+      fetch(`${API_BASE}/rides/cancel_ride.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ride_id: activeRide.ride_id,
+          reason: 'Emergency cancel'
+        }),
+        credentials: 'include'
+      });
+    }
+  }
+}
+
+function reportIssue() {
+  const issue = prompt('Please describe the issue:');
+  if (issue && issue.trim()) {
+    fetch(`${API_BASE}/support/submit_issue.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        issue: issue.trim(),
+        ride_id: activeRide?.ride_id
+      }),
+      credentials: 'include'
+    }).then(() => {
+      showNotification('Issue reported successfully', 'success');
+    }).catch(() => {
+      showNotification('Failed to report issue', 'error');
+    });
+  }
+}
+
+// Enhanced estimate handler with ride sharing
+document.getElementById('get-estimate-btn').addEventListener('click', async () => {
+    const pickup = document.getElementById('pickup-location');
+    const drop = document.getElementById('drop-location');
+    const sharedRide = document.getElementById('shared-ride').checked;
+
+    if (!pickup.value || !drop.value) {
+        alert('Please select both pickup and drop locations');
+        return;
+    }
+    if (pickup.value === drop.value) {
+        alert('Pickup and drop locations cannot be same');
+        return;
+    }
+
+    const btn = document.getElementById('get-estimate-btn');
+    btn.disabled = true;
+    btn.textContent = 'Getting estimate...';
+
+    try {
+        const pOpt = pickup.options[pickup.selectedIndex];
+        const dOpt = drop.options[drop.selectedIndex];
+
+        const formData = new FormData();
+        formData.append('pickup_lat', pOpt.dataset.lat);
+        formData.append('pickup_lng', pOpt.dataset.lng);
+        formData.append('pickup_name', pOpt.text);
+        formData.append('drop_lat', dOpt.dataset.lat);
+        formData.append('drop_lng', dOpt.dataset.lng);
+        formData.append('drop_name', dOpt.text);
+        formData.append('shared_ride', sharedRide ? '1' : '0');
+
+        const res = await fetch(`${API_BASE}/rides/get_estimate.php`, {
+            method: 'POST',
+            body: formData,
+            credentials: 'include'
+        });
+
+        const data = await res.json();
+
+        if (data.status === 'success') {
+            currentEstimate = data.estimate;
+            showEstimateModal(data);
+        } else {
+            alert(data.message || 'Failed to get estimate');
+        }
+    } catch (e) {
+        alert('Error: ' + e.message);
+        console.error('Estimate error:', e);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Get Estimate';
+    }
+});
 </script>
 </body>
 </html>
