@@ -82,8 +82,52 @@ $vehicle = $result->fetch_assoc();
 $vehicle_distance = calculateDistance($vehicle['current_lat'], $vehicle['current_lng'], $pickup_lat, $pickup_lng);
 $vehicle_eta_minutes = calculateETA($vehicle_distance);
 
-// Flat campus fare
-$fare = 10.0;
+// Dynamic fare calculation
+$base_fare = 10.0;
+$fare = $shared_ride ? 7.0 : $base_fare; // 30% discount for shared rides
+
+// Check for shared ride availability
+$can_share = false;
+$shared_passengers = [];
+
+if ($shared_ride) {
+    // Look for existing compatible rides
+    $share_sql = "
+        SELECT r.ride_id, r.pickup_lat, r.pickup_lng, r.drop_lat, r.drop_lng,
+               r.pickup_name, r.drop_name, r.status, r.student_id,
+               s.name as student_name, v.vehicle_id, v.vehicle_number
+        FROM rides r
+        JOIN students s ON r.student_id = s.student_id
+        JOIN vehicles v ON r.vehicle_id = v.vehicle_id
+        WHERE r.status IN ('pending', 'accepted')
+        AND r.pickup_time > DATE_SUB(NOW(), INTERVAL 10 MINUTE)
+        AND r.vehicle_id IN (
+            SELECT vehicle_id FROM vehicles
+            WHERE (capacity - current_occupancy) > 1
+        )
+        HAVING (
+            (6371 * acos(cos(radians(?)) * cos(radians(r.pickup_lat)) *
+             cos(radians(r.pickup_lng) - radians(?)) +
+             sin(radians(?)) * sin(radians(r.pickup_lat)))) <= 0.5
+        ) AND (
+            (6371 * acos(cos(radians(?)) * cos(radians(r.drop_lat)) *
+             cos(radians(r.drop_lng) - radians(?)) +
+             sin(radians(?)) * sin(radians(r.drop_lat)))) <= 0.5
+        )
+        ORDER BY r.request_time ASC
+        LIMIT 3
+    ";
+
+    $stmt = $conn->prepare($share_sql);
+    $stmt->bind_param("dddddd", $pickup_lat, $pickup_lng, $pickup_lat, $drop_lat, $drop_lng, $drop_lat);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows > 0) {
+        $can_share = true;
+        $shared_passengers = $result->fetch_all(MYSQLI_ASSOC);
+    }
+}
 
 // Check student wallet
 $wallet_stmt = $conn->prepare("SELECT wallet_balance FROM students WHERE id=?");
