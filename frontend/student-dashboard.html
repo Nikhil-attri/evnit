@@ -636,9 +636,23 @@ function checkAuth(){
   const urlParams = new URLSearchParams(window.location.search);
   const studentName = urlParams.get('name') || 'Student';
   const studentEmail = urlParams.get('email') || 'student@vnit.ac.in';
-  
+
+  // Set current user for WebSocket auth
+  currentUser = {
+    id: urlParams.get('student_id') || 1,
+    name: studentName,
+    email: studentEmail,
+    type: 'student'
+  };
+
   document.getElementById('sidebar-user-name').textContent = studentName;
   document.getElementById('sidebar-user-email').textContent = studentEmail;
+
+  // Connect WebSocket
+  connectWebSocket();
+
+  // Load active ride if exists
+  loadActiveRide();
 }
 
 function showSection(section,event){
